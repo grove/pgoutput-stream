@@ -47,6 +47,8 @@ fn create_delete_change(schema: &str, table: &str) -> Change {
 // Note: These tests verify subject generation logic without requiring a NATS server
 // Integration tests with actual NATS server would require a running NATS instance
 
+/// Tests NATS subject format generation for INSERT operations.
+/// Verifies that INSERT events generate subjects in the format: {prefix}.{schema}.{table}.insert
 #[test]
 fn test_nats_subject_format_insert() {
     // Test that subject format is correct for INSERT operations
@@ -64,6 +66,8 @@ fn test_nats_subject_format_insert() {
     }
 }
 
+/// Tests NATS subject format generation for UPDATE operations.
+/// Verifies that UPDATE events generate subjects in the format: {prefix}.{schema}.{table}.update
 #[test]
 fn test_nats_subject_format_update() {
     let change = create_update_change("public", "orders");
@@ -78,6 +82,8 @@ fn test_nats_subject_format_update() {
     }
 }
 
+/// Tests NATS subject format generation for DELETE operations.
+/// Verifies that DELETE events generate subjects in the format: {prefix}.{schema}.{table}.delete
 #[test]
 fn test_nats_subject_format_delete() {
     let change = create_delete_change("public", "products");
@@ -92,6 +98,8 @@ fn test_nats_subject_format_delete() {
     }
 }
 
+/// Tests NATS subject format generation for transaction BEGIN events.
+/// Verifies that BEGIN events generate subjects in the format: {prefix}.transactions.begin.event
 #[test]
 fn test_nats_subject_format_transaction_begin() {
     let change = Change::Begin {
@@ -108,6 +116,8 @@ fn test_nats_subject_format_transaction_begin() {
     }
 }
 
+/// Tests NATS subject format generation for transaction COMMIT events.
+/// Verifies that COMMIT events generate subjects in the format: {prefix}.transactions.commit.event
 #[test]
 fn test_nats_subject_format_transaction_commit() {
     let change = Change::Commit {
@@ -123,6 +133,8 @@ fn test_nats_subject_format_transaction_commit() {
     }
 }
 
+/// Tests NATS subject format generation for RELATION metadata events.
+/// Verifies that RELATION events generate subjects in the format: {prefix}.{schema}.{table}.relation
 #[test]
 fn test_nats_subject_format_relation() {
     let columns = vec![
@@ -150,6 +162,8 @@ fn test_nats_subject_format_relation() {
     }
 }
 
+/// Tests NATS subject generation with non-standard schema and table names.
+/// Verifies that schema/table names with hyphens and underscores are correctly included in subjects.
 #[test]
 fn test_nats_subject_with_special_schema_names() {
     let change = create_insert_change("my-custom_schema", "test_table");
@@ -165,6 +179,8 @@ fn test_nats_subject_with_special_schema_names() {
     }
 }
 
+/// Tests NATS subject generation across multiple schemas.
+/// Verifies that events from different schemas create distinct subject paths for proper routing.
 #[test]
 fn test_nats_subject_with_multiple_schemas() {
     // Test different schemas to ensure proper subject routing
@@ -186,6 +202,8 @@ fn test_nats_subject_with_multiple_schemas() {
     }
 }
 
+/// Tests JSON serialization of Change events for NATS payloads.
+/// Verifies that Change events can be serialized to JSON and deserialized back correctly.
 #[test]
 fn test_change_serialization_for_nats() {
     // Verify that changes can be serialized to JSON for NATS payloads
@@ -205,6 +223,8 @@ fn test_change_serialization_for_nats() {
     }
 }
 
+/// Tests roundtrip serialization for all Change event types.
+/// Verifies that all event types (Begin, Insert, Update, Delete, Commit) maintain their structure through serialization.
 #[test]
 fn test_change_serialization_roundtrip() {
     let changes = vec![
@@ -238,6 +258,8 @@ fn test_change_serialization_roundtrip() {
     }
 }
 
+/// Tests that NATS payload sizes remain reasonable for wide tables.
+/// Verifies that even tables with 100 columns produce manageable JSON payloads (< 100KB).
 #[test]
 fn test_nats_payload_size_reasonable() {
     // Verify that serialized payloads are reasonable sizes
@@ -262,6 +284,8 @@ fn test_nats_payload_size_reasonable() {
     assert!(json.len() < 100_000);
 }
 
+/// Tests consistency of NATS subject hierarchy for table operations.
+/// Verifies that all operations on the same table share a common subject prefix for filtering.
 #[test]
 fn test_nats_subject_hierarchy_consistency() {
     // Verify all operations on same table use same prefix
@@ -285,6 +309,8 @@ fn test_nats_subject_hierarchy_consistency() {
     }
 }
 
+/// Tests that concurrent operations on different tables produce distinct subjects.
+/// Verifies subject uniqueness for different schema/table/operation combinations.
 #[test]
 fn test_concurrent_subject_patterns() {
     // Verify subjects from different tables can be distinguished
@@ -314,6 +340,8 @@ fn test_concurrent_subject_patterns() {
     }
 }
 
+/// Tests serialization of INSERT events with empty tuple data.
+/// Verifies that events with no column data still serialize to valid JSON.
 #[test]
 fn test_empty_tuple_serialization() {
     let change = Change::Insert {
@@ -328,6 +356,8 @@ fn test_empty_tuple_serialization() {
     assert!(!json.is_empty());
 }
 
+/// Tests serialization of events with maximum LSN and transaction ID values.
+/// Verifies that edge case values (max u64, max i64, max u32) serialize correctly.
 #[test]
 fn test_large_lsn_values() {
     let change = Change::Begin {
@@ -350,6 +380,8 @@ fn test_large_lsn_values() {
     }
 }
 
+/// Tests serialization of Unicode characters in table data.
+/// Verifies that international characters (Chinese, Norwegian, German) are preserved through serialization.
 #[test]
 fn test_unicode_in_table_data() {
     let mut tuple = HashMap::new();

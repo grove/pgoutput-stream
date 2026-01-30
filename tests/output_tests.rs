@@ -2,24 +2,32 @@ use pgoutput_cmdline::output::*;
 use pgoutput_cmdline::decoder::*;
 use std::collections::HashMap;
 
+/// Tests parsing of 'json' output format string.
+/// Verifies that OutputFormat::from_str correctly recognizes and returns the Json variant.
 #[test]
 fn test_output_format_from_str_json() {
     let format = OutputFormat::from_str("json").unwrap();
     assert!(matches!(format, OutputFormat::Json));
 }
 
+/// Tests parsing of 'json-pretty' output format string.
+/// Verifies that the JsonPretty format is correctly recognized.
 #[test]
 fn test_output_format_from_str_json_pretty() {
     let format = OutputFormat::from_str("json-pretty").unwrap();
     assert!(matches!(format, OutputFormat::JsonPretty));
 }
 
+/// Tests parsing of 'text' output format string for human-readable output.
+/// Verifies the Text format variant is properly created.
 #[test]
 fn test_output_format_from_str_text() {
     let format = OutputFormat::from_str("text").unwrap();
     assert!(matches!(format, OutputFormat::Text));
 }
 
+/// Tests that output format parsing is case-insensitive.
+/// Verifies that 'JSON', 'Json', and 'TEXT' all parse correctly.
 #[test]
 fn test_output_format_from_str_case_insensitive() {
     assert!(matches!(OutputFormat::from_str("JSON").unwrap(), OutputFormat::Json));
@@ -27,6 +35,8 @@ fn test_output_format_from_str_case_insensitive() {
     assert!(matches!(OutputFormat::from_str("TEXT").unwrap(), OutputFormat::Text));
 }
 
+/// Tests error handling for invalid output format strings.
+/// Verifies that unrecognized formats like 'invalid', 'xml', and empty strings return errors.
 #[test]
 fn test_output_format_from_str_invalid() {
     assert!(OutputFormat::from_str("invalid").is_err());
@@ -34,6 +44,8 @@ fn test_output_format_from_str_invalid() {
     assert!(OutputFormat::from_str("").is_err());
 }
 
+/// Tests JSON serialization of BEGIN transaction events.
+/// Verifies that LSN, timestamp, and transaction ID are correctly serialized to JSON.
 #[test]
 fn test_json_serialization_begin() {
     let change = Change::Begin {
@@ -52,6 +64,8 @@ fn test_json_serialization_begin() {
     let _: serde_json::Value = serde_json::from_str(&json).unwrap();
 }
 
+/// Tests JSON serialization of COMMIT transaction events.
+/// Verifies that commit LSN and timestamp are properly formatted in JSON output.
 #[test]
 fn test_json_serialization_commit() {
     let change = Change::Commit {
@@ -65,6 +79,8 @@ fn test_json_serialization_commit() {
     assert!(json.contains("987654321"));
 }
 
+/// Tests JSON serialization of INSERT operations.
+/// Verifies that relation ID, schema, table name, and tuple data are correctly represented in JSON.
 #[test]
 fn test_json_serialization_insert() {
     let mut new_tuple = HashMap::new();
@@ -88,6 +104,8 @@ fn test_json_serialization_insert() {
     let _: serde_json::Value = serde_json::from_str(&json).unwrap();
 }
 
+/// Tests JSON serialization of INSERT operations containing NULL values.
+/// Verifies that SQL NULL is properly represented as JSON null.
 #[test]
 fn test_json_serialization_insert_with_null() {
     let mut new_tuple = HashMap::new();
@@ -110,6 +128,8 @@ fn test_json_serialization_insert_with_null() {
     assert!(insert["new_tuple"]["email"].is_null());
 }
 
+/// Tests JSON serialization of UPDATE operations with old tuple data.
+/// Verifies that both old and new values are included when REPLICA IDENTITY FULL is used.
 #[test]
 fn test_json_serialization_update_with_old_tuple() {
     let mut old_tuple = HashMap::new();
@@ -132,6 +152,8 @@ fn test_json_serialization_update_with_old_tuple() {
     assert!(json.contains("Robert"));
 }
 
+/// Tests JSON serialization of UPDATE operations without old tuple data.
+/// Verifies proper handling when only new values are available (REPLICA IDENTITY DEFAULT).
 #[test]
 fn test_json_serialization_update_without_old_tuple() {
     let mut new_tuple = HashMap::new();
@@ -154,6 +176,8 @@ fn test_json_serialization_update_without_old_tuple() {
     assert!(value["Update"]["old_tuple"].is_null());
 }
 
+/// Tests JSON serialization of DELETE operations.
+/// Verifies that deleted row data (old tuple) is correctly serialized to JSON.
 #[test]
 fn test_json_serialization_delete() {
     let mut old_tuple = HashMap::new();
@@ -171,6 +195,8 @@ fn test_json_serialization_delete() {
     assert!(json.contains("42"));
 }
 
+/// Tests JSON serialization of RELATION metadata events.
+/// Verifies that table schema information including column names, types, and flags are properly serialized.
 #[test]
 fn test_json_serialization_relation() {
     let columns = vec![
@@ -202,6 +228,8 @@ fn test_json_serialization_relation() {
     assert!(json.contains("\"type_id\":23"));
 }
 
+/// Tests pretty-printed JSON output formatting.
+/// Verifies that pretty format includes proper newlines and indentation for readability.
 #[test]
 fn test_json_pretty_format() {
     let change = Change::Begin {
@@ -217,6 +245,8 @@ fn test_json_pretty_format() {
     assert!(json_pretty.contains("  ")); // Indentation
 }
 
+/// Tests JSON serialization of strings containing special characters.
+/// Verifies that quotes, backslashes, and other special characters are properly escaped.
 #[test]
 fn test_json_special_characters() {
     let mut new_tuple = HashMap::new();
@@ -239,6 +269,8 @@ fn test_json_special_characters() {
     let _: serde_json::Value = serde_json::from_str(&json).unwrap();
 }
 
+/// Tests JSON serialization of Unicode characters.
+/// Verifies that international characters (Norwegian, German, Chinese) are preserved correctly in JSON.
 #[test]
 fn test_json_unicode() {
     let mut new_tuple = HashMap::new();
@@ -259,6 +291,8 @@ fn test_json_unicode() {
     assert_eq!(name, "Håkon Müller 李明");
 }
 
+/// Tests JSON serialization of empty strings.
+/// Verifies that empty string values are correctly represented as "" in JSON output.
 #[test]
 fn test_json_empty_string() {
     let mut new_tuple = HashMap::new();
@@ -281,6 +315,8 @@ fn test_json_empty_string() {
 
 // Tests for new OutputTarget trait and implementations
 
+/// Tests async StdoutOutput implementation for INSERT operations.
+/// Verifies that the OutputTarget trait correctly handles INSERT events without panicking.
 #[tokio::test]
 async fn test_stdout_output_insert() {
     let output = StdoutOutput::new(OutputFormat::Json);
@@ -300,6 +336,8 @@ async fn test_stdout_output_insert() {
     output.write_change(&change).await.unwrap();
 }
 
+/// Tests async StdoutOutput implementation for UPDATE operations.
+/// Verifies correct handling of UPDATE events with both old and new tuple data.
 #[tokio::test]
 async fn test_stdout_output_update() {
     let output = StdoutOutput::new(OutputFormat::Json);
@@ -323,6 +361,8 @@ async fn test_stdout_output_update() {
     output.write_change(&change).await.unwrap();
 }
 
+/// Tests async StdoutOutput implementation for DELETE operations.
+/// Verifies that DELETE events are properly output using JSON-pretty format.
 #[tokio::test]
 async fn test_stdout_output_delete() {
     let output = StdoutOutput::new(OutputFormat::JsonPretty);
@@ -341,6 +381,8 @@ async fn test_stdout_output_delete() {
     output.write_change(&change).await.unwrap();
 }
 
+/// Tests async StdoutOutput for transaction boundary events.
+/// Verifies that BEGIN and COMMIT events are correctly output in text format.
 #[tokio::test]
 async fn test_stdout_output_transaction_events() {
     let output = StdoutOutput::new(OutputFormat::Text);
@@ -359,6 +401,8 @@ async fn test_stdout_output_transaction_events() {
     output.write_change(&commit).await.unwrap();
 }
 
+/// Tests async StdoutOutput for RELATION metadata events.
+/// Verifies that table schema definitions are properly output including column information.
 #[tokio::test]
 async fn test_stdout_output_relation() {
     let output = StdoutOutput::new(OutputFormat::Json);
@@ -386,6 +430,8 @@ async fn test_stdout_output_relation() {
     output.write_change(&change).await.unwrap();
 }
 
+/// Tests CompositeOutput with a single output target.
+/// Verifies that the multiplexer correctly forwards events to a single StdoutOutput.
 #[tokio::test]
 async fn test_composite_output_with_single_target() {
     use std::sync::Arc;
@@ -406,6 +452,8 @@ async fn test_composite_output_with_single_target() {
     composite.write_change(&change).await.unwrap();
 }
 
+/// Tests CompositeOutput with multiple output targets.
+/// Verifies that events are correctly sent to multiple outputs (JSON and Text formats).
 #[tokio::test]
 async fn test_composite_output_with_multiple_targets() {
     use std::sync::Arc;
@@ -430,6 +478,8 @@ async fn test_composite_output_with_multiple_targets() {
     composite.write_change(&change).await.unwrap();
 }
 
+/// Tests CompositeOutput with no output targets.
+/// Verifies that the multiplexer handles empty target lists gracefully without panicking.
 #[tokio::test]
 async fn test_composite_output_empty_targets() {
     let composite = CompositeOutput::new(vec![]);
@@ -448,6 +498,8 @@ async fn test_composite_output_empty_targets() {
     composite.write_change(&change).await.unwrap();
 }
 
+/// Tests complete transaction flow through OutputTarget.
+/// Verifies proper handling of Begin, Relation, INSERT, UPDATE, DELETE, and Commit in sequence.
 #[tokio::test]
 async fn test_full_transaction_flow_through_output() {
     let output = StdoutOutput::new(OutputFormat::Json);
@@ -520,6 +572,8 @@ async fn test_full_transaction_flow_through_output() {
     output.write_change(&commit).await.unwrap();
 }
 
+/// Tests StdoutOutput handling of NULL values in tuple data.
+/// Verifies that NULL columns are correctly represented in the output.
 #[tokio::test]
 async fn test_stdout_output_with_null_values() {
     let output = StdoutOutput::new(OutputFormat::Json);
@@ -539,6 +593,8 @@ async fn test_stdout_output_with_null_values() {
     output.write_change(&change).await.unwrap();
 }
 
+/// Tests StdoutOutput with non-standard schema names.
+/// Verifies handling of schema names containing hyphens and underscores.
 #[tokio::test]
 async fn test_stdout_output_with_special_schema_names() {
     let output = StdoutOutput::new(OutputFormat::Json);
@@ -556,6 +612,8 @@ async fn test_stdout_output_with_special_schema_names() {
     output.write_change(&change).await.unwrap();
 }
 
+/// Tests text format output for human readability.
+/// Verifies that text format correctly displays INSERT operations in readable form.
 #[tokio::test]
 async fn test_stdout_output_text_format() {
     let output = StdoutOutput::new(OutputFormat::Text);
@@ -575,6 +633,8 @@ async fn test_stdout_output_text_format() {
     output.write_change(&change).await.unwrap();
 }
 
+/// Tests multiple INSERT operations through CompositeOutput.
+/// Verifies that sequential inserts to different tables are handled correctly by multiple outputs.
 #[tokio::test]
 async fn test_multiple_inserts_through_composite() {
     use std::sync::Arc;

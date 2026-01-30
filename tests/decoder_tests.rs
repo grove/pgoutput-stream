@@ -1,5 +1,7 @@
 use pgoutput_cmdline::decoder::*;
 
+/// Tests decoding of BEGIN transaction messages from the pgoutput protocol.
+/// Verifies that LSN (Log Sequence Number), timestamp, and transaction ID (xid) are correctly parsed.
 #[test]
 fn test_decode_begin() {
     // BEGIN message format: 'B' + LSN(8) + timestamp(8) + xid(4)
@@ -20,6 +22,8 @@ fn test_decode_begin() {
     }
 }
 
+/// Tests decoding of COMMIT transaction messages from the pgoutput protocol.
+/// Verifies that commit LSN and timestamp are correctly extracted.
 #[test]
 fn test_decode_commit() {
     // COMMIT message format: 'C' + flags(1) + LSN(8) + end_lsn(8) + timestamp(8)
@@ -39,6 +43,9 @@ fn test_decode_commit() {
     }
 }
 
+/// Tests decoding of RELATION metadata messages that define table schemas.
+/// Verifies extraction of relation ID, schema name, table name, and column definitions
+/// including column names, PostgreSQL type IDs, and flags.
 #[test]
 fn test_decode_relation() {
     // RELATION message format: 'R' + relation_id(4) + schema + table + replica_identity(1) + column_count(2) + columns
@@ -80,6 +87,9 @@ fn test_decode_relation() {
     }
 }
 
+/// Tests decoding of INSERT operations from the replication stream.
+/// First registers a relation (table schema) then decodes an INSERT message.
+/// Verifies that column values are correctly extracted and matched to column names.
 #[test]
 fn test_decode_insert() {
     // First, register a relation so we can decode the insert
@@ -130,6 +140,9 @@ fn test_decode_insert() {
     }
 }
 
+/// Tests decoding of INSERT operations that contain NULL values.
+/// Verifies that NULL indicators in the protocol are correctly identified
+/// and represented as None in the resulting tuple data.
 #[test]
 fn test_decode_insert_with_null() {
     // Register relation
@@ -171,6 +184,9 @@ fn test_decode_insert_with_null() {
     }
 }
 
+/// Tests decoding of UPDATE operations that include old tuple data.
+/// When REPLICA IDENTITY FULL is set, UPDATE messages include both old and new values.
+/// Verifies that both old and new tuple data are correctly parsed.
 #[test]
 fn test_decode_update_with_old_tuple() {
     // Register relation
@@ -214,6 +230,9 @@ fn test_decode_update_with_old_tuple() {
     }
 }
 
+/// Tests decoding of UPDATE operations without old tuple data.
+/// When REPLICA IDENTITY DEFAULT is set, UPDATE messages only include new values.
+/// Verifies that the decoder handles missing old tuple data correctly.
 #[test]
 fn test_decode_update_without_old_tuple() {
     // Register relation
@@ -250,6 +269,9 @@ fn test_decode_update_without_old_tuple() {
     }
 }
 
+/// Tests decoding of DELETE operations from the replication stream.
+/// Verifies that the old tuple data (deleted row values) is correctly extracted
+/// and associated with the proper relation.
 #[test]
 fn test_decode_delete() {
     // Register relation
@@ -286,6 +308,9 @@ fn test_decode_delete() {
     }
 }
 
+/// Tests decoder behavior with empty message data.
+/// Verifies that the decoder gracefully handles empty byte arrays
+/// without panicking or producing invalid output.
 #[test]
 fn test_decode_empty_message() {
     let data = vec![];
@@ -293,6 +318,9 @@ fn test_decode_empty_message() {
     assert!(result.is_none());
 }
 
+/// Tests decoder behavior with unknown message type indicators.
+/// Verifies that unrecognized message types are handled gracefully
+/// without causing errors or crashes.
 #[test]
 fn test_decode_unknown_message_type() {
     let data = vec![b'X']; // Unknown message type
@@ -300,6 +328,9 @@ fn test_decode_unknown_message_type() {
     assert!(result.is_none());
 }
 
+/// Tests decoding of BEGIN messages with maximum LSN values.
+/// Ensures the decoder can handle edge cases with very large LSN numbers
+/// that use the full 64-bit range.
 #[test]
 fn test_decode_begin_with_large_lsn() {
     let mut data = vec![b'B'];
@@ -319,6 +350,9 @@ fn test_decode_begin_with_large_lsn() {
     }
 }
 
+/// Tests decoding of RELATION messages with special characters in identifiers.
+/// Verifies that schema and table names containing underscores, hyphens,
+/// and other special characters are correctly handled.
 #[test]
 fn test_decode_relation_with_special_characters() {
     let mut data = vec![b'R'];
