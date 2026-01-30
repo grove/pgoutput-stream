@@ -10,11 +10,14 @@ INSERT INTO users (name, email) VALUES ('Eve', 'eve@example.com');
 
 -- UPDATE events
 UPDATE users SET email = 'alice.smith@example.com' WHERE name = 'Alice';
-UPDATE users SET email = 'bob.jones@example.com' WHERE name = 'Bob';
+
+
 
 -- More INSERT events
 INSERT INTO orders (user_id, product, amount) VALUES (1, 'Monitor', 299.99);
 INSERT INTO orders (user_id, product, amount) VALUES (3, 'USB Cable', 9.99);
+
+UPDATE orders SET amount = 279.99 WHERE product = 'Monitor';
 
 -- DELETE events
 DELETE FROM orders WHERE amount < 30.00;
