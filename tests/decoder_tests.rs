@@ -376,3 +376,70 @@ fn test_decode_relation_with_special_characters() {
         _ => panic!("Expected Relation change"),
     }
 }
+
+/// Tests LSN extraction from Begin events
+#[test]
+fn test_get_lsn_from_begin() {
+    let change = Change::Begin {
+        lsn: "0/1234567".to_string(),
+        timestamp: 123456789,
+        xid: 999,
+    };
+    
+    assert_eq!(change.get_lsn(), Some("0/1234567"));
+}
+
+/// Tests LSN extraction from Commit events
+#[test]
+fn test_get_lsn_from_commit() {
+    let change = Change::Commit {
+        lsn: "0/9ABCDEF".to_string(),
+        timestamp: 987654321,
+    };
+    
+    assert_eq!(change.get_lsn(), Some("0/9ABCDEF"));
+}
+
+/// Tests that data events (Insert, Update, Delete) return None for LSN
+#[test]
+fn test_get_lsn_from_data_events() {
+    use std::collections::HashMap;
+    
+    let insert = Change::Insert {
+        relation_id: 100,
+        schema: "public".to_string(),
+        table: "test".to_string(),
+        new_tuple: HashMap::new(),
+    };
+    assert_eq!(insert.get_lsn(), None);
+    
+    let update = Change::Update {
+        relation_id: 100,
+        schema: "public".to_string(),
+        table: "test".to_string(),
+        old_tuple: None,
+        new_tuple: HashMap::new(),
+    };
+    assert_eq!(update.get_lsn(), None);
+    
+    let delete = Change::Delete {
+        relation_id: 100,
+        schema: "public".to_string(),
+        table: "test".to_string(),
+        old_tuple: HashMap::new(),
+    };
+    assert_eq!(delete.get_lsn(), None);
+}
+
+/// Tests that Relation events return None for LSN
+#[test]
+fn test_get_lsn_from_relation() {
+    let change = Change::Relation {
+        relation_id: 100,
+        schema: "public".to_string(),
+        table: "test".to_string(),
+        columns: vec![],
+    };
+    
+    assert_eq!(change.get_lsn(), None);
+}

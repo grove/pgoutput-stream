@@ -184,7 +184,18 @@ async fn main() -> Result<()> {
             result = stream.next_message() => {
                 match result {
                     Ok(Some(change)) => {
+                        // Write change to output targets
                         output_handler.write_change(&change).await?;
+                        
+                        // Mark LSN as processed for monitoring
+                        // Note: pg_logical_slot_get_binary_changes already auto-confirms,
+                        // this is for tracking/debugging purposes
+                        if let Some(lsn) = change.get_lsn() {
+                            stream.mark_processed(lsn);
+                        } else if let Some(lsn) = stream.last_received_lsn().map(|s| s.to_string()) {
+                            // For data events without LSN, use the last received LSN
+                            stream.mark_processed(&lsn);
+                        }
                     }
                     Ok(None) => {
                         // Keep-alive or no data
@@ -198,6 +209,17 @@ async fn main() -> Result<()> {
             }
             _ = shutdown_rx.recv() => {
                 eprintln!("Shutting down gracefully...");
+                
+                // Print final status
+                if let Some(lsn) = stream.last_processed_lsn() {
+                    eprintln!("Last processed LSN: {}", lsn);
+                }
+                if let Ok(status) = stream.get_slot_status().await {
+                    eprintln!("Replication slot status:");
+                    eprintln!("  Confirmed flush LSN: {}", status.confirmed_flush_lsn);
+                    eprintln!("  Restart LSN: {}", status.restart_lsn);
+                    eprintln!("  Active: {}", status.active);
+                }
                 break;
             }
         }

@@ -42,6 +42,17 @@ pub enum Change {
     },
 }
 
+impl Change {
+    /// Extract LSN from Change event if available
+    pub fn get_lsn(&self) -> Option<&str> {
+        match self {
+            Change::Begin { lsn, .. } => Some(lsn),
+            Change::Commit { lsn, .. } => Some(lsn),
+            _ => None,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ColumnInfo {
     pub name: String,

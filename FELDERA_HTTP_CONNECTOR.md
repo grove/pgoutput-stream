@@ -196,6 +196,25 @@ Only data changes (INSERT, UPDATE, DELETE) are streamed.
 - **Data Types**: Numeric fields sent as JSON numbers, not strings
 - **Array Format**: The `array=true` parameter requires all events to be JSON arrays
 
+### LSN Tracking and Acknowledgement
+
+**Auto-Acknowledgement**: The tool uses `pg_logical_slot_get_binary_changes()` which **automatically confirms** LSNs as changes are retrieved from PostgreSQL:
+
+- \u2705 **Automatic WAL advancement**: Confirmed flush LSN moves forward as events are fetched
+- \u2705 **WAL cleanup**: Old WAL files are automatically cleaned up (no unbounded growth)
+- \u26a0\ufe0f **At-least-once delivery**: If tool crashes after fetching but before Feldera confirms, events may be replayed
+- \u26a0\ufe0f **No durability guarantee**: Tool trusts HTTP 200 response; doesn't verify Feldera persistence
+
+**Monitoring LSN Progress**: Track replication slot status in PostgreSQL:
+
+```sql
+SELECT \n  slot_name,\n  confirmed_flush_lsn,\n  restart_lsn,\n  pg_size_pretty(pg_wal_lsn_diff(pg_current_wal_lsn(), restart_lsn)) AS lag\nFROM pg_replication_slots\nWHERE slot_name = 'your_slot_name';
+```
+
+**Graceful Shutdown**: On Ctrl+C, the tool prints:
+- Last processed LSN
+- Replication slot status (confirmed flush LSN, restart LSN, active state)
+
 ## Examples
 
 ### Example 1: Multi-Table Streaming (All Tables)
@@ -535,6 +554,25 @@ This logs both:
 - Events being sent (stdout)
 - Error messages (stderr)
 
+### Production Considerations
+
+**Idempotency**: Feldera tables should handle duplicate events gracefully:
+- Use primary keys or unique constraints
+- Design views to be idempotent
+- Consider using UPDATE format if Feldera supports it in the future
+
+**Error Handling**: If Feldera HTTP request fails:
+- Tool stops processing and returns error  
+- LSN is already confirmed to PostgreSQL (fetched = acknowledged)
+- Events are lost if tool crashes before successful HTTP delivery
+- Consider implementing retry logic or using NATS as an intermediate buffer
+
+**Monitoring**: Track these metrics:
+- Replication lag (WAL position difference)
+- HTTP error rates to Feldera
+- Last processed LSN timestamp
+- Feldera table row counts
+
 ## Best Practices
 
 ### 1. Use REPLICA IDENTITY FULL
@@ -577,7 +615,29 @@ When changing schemas:
 
 Alternatively, use separate slots for backward-compatible changes.
 
-### 5. High Availability
+### 5. Handle At-Least-Once Delivery
+
+The tool provides **at-least-once** delivery guarantees:
+
+**Duplicate Prevention**:
+- Use primary keys or unique constraints in Feldera tables
+- Design idempotent views (e.g., use `MAX(timestamp)` instead of `COUNT(*)`)
+- Test replay scenarios in development
+
+**Data Loss Prevention**:
+- Monitor HTTP error rates (errors = potential data loss)
+- Consider NATS as an intermediate buffer for guaranteed delivery
+- Implement alerting on prolonged failures
+- Regularly verify data consistency between PostgreSQL and Feldera
+
+**Recovery Strategy**:
+```sql
+-- If data loss detected, consider manual backfill
+-- Check last successful LSN and compare with source tables
+SELECT * FROM postgres_table WHERE updated_at > last_successful_timestamp;
+```
+
+### 6. High Availability
 
 For production:
 - Use process supervision (systemd)
